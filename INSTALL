@@ -1,0 +1,16 @@
+CmuScrobbler - Installation Guide
+================================
+
+To install CmuScrobble, copy the python script somewhere convenient (e.g.
+/home/user/.cmus/cmuscrobble.py).
+
+Edit the beginning of the file and add your last.fm username and password and
+set the path to the cachefile (e.g. /home/user/.cmus/cmuscrobble.cache).
+
+Make sure you have python-scrobbler installed. You can install it with
+easy_installer by entering `sudo easy_install scrobbler`.
+
+Afer you have done all this you can set cmus to use cmuscrobbler.py by entering
+`:set status_display_program=/home/user/.cmus/cmuscrobble.py`.
+
+Then you should be good to go to scrobble your brains out.
