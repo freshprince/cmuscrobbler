@@ -3,11 +3,14 @@
 import sys
 import time
 import os
+import cgitb
 from datetime import datetime
 import scrobbler
 
 username = 'your last.fm username'
 password = '5f4dcc3b5aa765d61d8327deb882cf99'
+cachefile = '/path/to/cachefile'
+
 # to get yout passwort start python and enter:
 # >>> from hashlib import md5
 # >>> md5('password').hexdigest()
@@ -18,9 +21,12 @@ class CmuScrobbler(object):
         self.data = {}
         self.status = None
         self.status_content = None
+        self.pidfile = None
 
         if self.status is None:
-            self.status = "/tmp/cmuscrobbler-%s" % os.environ["USER"]
+            self.status = '/tmp/cmuscrobbler-%s.status' % os.environ['USER']
+        if self.pidfile is None:
+            self.pidfile = '/tmp/cmuscrobbler-%s.pid' % os.environ['USER']
 
     def get_status(self):
         self.read_arguments()
@@ -42,12 +48,21 @@ class CmuScrobbler(object):
 
             self.submit()
 
+        now_playing = None
         if self.data['status'] == u'playing':
-            self.submit_now_playing()
             self.write_file(now)
+            now_playing = {
+                'artist': self.data['artist'],
+                'title': self.data['title'],
+                'album': self.data['album'],
+                'length': self.data['duration'],
+                'trackno': self.data['tracknumber'],
+            }
         else:
             if os.path.exists(self.status):
                 os.remove(self.status)
+
+        self.commit(now_playing)
 
 
     def read_arguments(self):
@@ -73,7 +88,7 @@ class CmuScrobbler(object):
         fo = open(self.status, "r")
         content = fo.read()
         fo.close()
-        (file, artist, title, album, trackno, start, duration) = content.decode('utf-8').split("\t")
+        (file, artist, title, album, trackno, start, duration) = content.decode('utf-8').strip().split("\t")
         self.status_content = {'file': file,
                                'artist': artist,
                                'title': title,
@@ -117,31 +132,71 @@ class CmuScrobbler(object):
             return
 
         # TODO: read mbid (MusicBrainz Track ID) from file
-        # TODO: CACHEING
-
-        scrobbler.login(username, password)
-        scrobbler.submit(
+        to_write = u'\t'.join((
             self.status_content['artist'],
             self.status_content['title'],
-            now,
-            source="P",
-            length=int(self.status_content['duration']),
-            album=self.status_content['album'],
-            trackno=self.status_content['trackno'],
-        )
-        print scrobbler.flush()
+            str(now),
+            u'P',
+            str(self.status_content['duration']),
+            self.status_content['album'],
+            self.status_content['trackno']))
+        fp = file(cachefile,'a')
+        fp.write(to_write.encode('utf-8'))
+        fp.close()
 
-    def submit_now_playing(self):
-        if self.data['artist'] == u'' or self.data['title'] == u'':
+    def commit(self, now_playing=None):
+        if os.path.exists(self.pidfile):
+            "commit already running maybe waiting for network timeout or something, doing nothing"
             return
-        scrobbler.login(username, password)
-        scrobbler.now_playing(
-            self.data['artist'],
-            self.data['title'],
-            album=self.data['album'],
-            length=int(self.data['duration']),
-            trackno=int(self.data['tracknumber']),
-        )
+        if not os.fork():
+            os.setsid()
+            pid = os.fork()
+            if pid:
+                fo = file(self.pidfile, 'w')
+                fo.write(str(pid))
+                fo.close()
+                sys.exit(0)
+            else:
+                self._real_commit(now_playing)
+
+    def _real_commit(self, now_playing):
+        try:
+            scrobbler.login(username, password)
+            if now_playing is not None and not now_playing['artist'] == u'' and not now_playing['title'] == u'':
+                scrobbler.now_playing(
+                    now_playing['artist'],
+                    now_playing['title'],
+                    album=now_playing['album'],
+                    length=int(now_playing['length']),
+                    trackno=int(now_playing['trackno']),
+                )
+            if os.path.exists(cachefile):
+                fo = file(cachefile,'r')
+                line = fo.readline()
+                while len(line) > 0:
+                    (artist, track, time, source, length, album, trackno) = line.decode('utf-8').strip().split('\t')
+                    scrobbler.submit(artist, track, int(time),
+                        source=source,
+                        length=int(length),
+                        album=album,
+                        trackno=int(trackno),
+                    )
+                    line = fo.readline()
+                fo.close()
+                scrobbler.flush()
+                os.remove(cachefile)
+        finally:
+            if os.path.exists(self.pidfile):
+                os.remove(self.pidfile)
+
+def exception_hook(*exc_info):
+    if exc_info == ():
+        exc_info = sys.exc_info()
+    fp = file('/tmp/cmuscrobbler-%s.error' % os.environ['USER'], 'a')
+    fp.write(cgitb.text(exc_info))
+    fp.close()
+
+sys.excepthook = exception_hook
 
 def usage():
     print "To use cmuscrobbler.py:"
