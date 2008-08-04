@@ -157,6 +157,7 @@ class CmuScrobbler(object):
             self.status_content['trackno']))
         fp = file(cachefile,'a')
         fp.write(to_write.encode('utf-8'))
+        fp.write('\n')
         fp.close()
 
     def commit(self, now_playing=None):
