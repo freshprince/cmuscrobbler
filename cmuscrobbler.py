@@ -146,7 +146,8 @@ class CmuScrobbler(object):
                 now - self.status_content['start'] < min(int(round(self.status_content['duration']/2.0)), 240)):
             return
 
-        # TODO: read mbid (MusicBrainz Track ID) from file
+        # TODO: read mbid (MusicBrainz Track ID) from file save filename and read it in the fork
+        # also do this for now_playing
         to_write = u'\t'.join((
             self.status_content['artist'],
             self.status_content['title'],
@@ -187,6 +188,7 @@ class CmuScrobbler(object):
                     trackno=int(now_playing['trackno']),
                 )
             if os.path.exists(cachefile):
+                # TODO: try several times (3?) with delay (exponentional?)
                 fo = file(cachefile,'r')
                 line = fo.readline()
                 while len(line) > 0:
