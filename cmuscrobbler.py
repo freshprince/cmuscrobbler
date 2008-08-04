@@ -124,6 +124,7 @@ class CmuScrobbler(object):
             self.data['duration']))
         fo = open(self.status, "w")
         fo.write(to_write.encode('utf-8'))
+        fo.write('\n')
         fo.close()
 
 
