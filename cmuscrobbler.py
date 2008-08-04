@@ -179,14 +179,6 @@ class CmuScrobbler(object):
     def _real_commit(self, now_playing):
         try:
             scrobbler.login(username, password)
-            if now_playing is not None and not now_playing['artist'] == u'' and not now_playing['title'] == u'':
-                scrobbler.now_playing(
-                    now_playing['artist'],
-                    now_playing['title'],
-                    album=now_playing['album'],
-                    length=int(now_playing['length']),
-                    trackno=int(now_playing['trackno']),
-                )
             if os.path.exists(cachefile):
                 # TODO: try several times (3?) with delay (exponentional?)
                 fo = file(cachefile,'r')
@@ -203,6 +195,14 @@ class CmuScrobbler(object):
                 fo.close()
                 scrobbler.flush()
                 os.remove(cachefile)
+            if now_playing is not None and not now_playing['artist'] == u'' and not now_playing['title'] == u'':
+                scrobbler.now_playing(
+                    now_playing['artist'],
+                    now_playing['title'],
+                    album=now_playing['album'],
+                    length=int(now_playing['length']),
+                    trackno=int(now_playing['trackno']),
+                )
         finally:
             if os.path.exists(self.pidfile):
                 os.remove(self.pidfile)
