@@ -21,6 +21,7 @@ import os
 import cgitb
 from datetime import datetime
 import scrobbler
+from mutagen.id3 import ID3
 
 username = 'your last.fm username'
 password = '5f4dcc3b5aa765d61d8327deb882cf99'
@@ -30,6 +31,14 @@ cachefile = '/path/to/cachefile'
 # >>> from hashlib import md5
 # >>> md5('password').hexdigest()
 # '5f4dcc3b5aa765d61d8327deb882cf99'
+
+def get_mbid(file):
+    try:
+        audio = ID3(file)
+        ufid = audio.get(u'UFID:http://musicbrainz.org')
+        return ufid.data if ufid else ''
+    except Exception:
+        return ''
 
 class CmuScrobbler(object):
     def __init__(self):
@@ -72,6 +81,7 @@ class CmuScrobbler(object):
                 'album': self.data['album'],
                 'length': self.data['duration'],
                 'trackno': self.data['tracknumber'],
+                'file': self.data['file'],
             }
         else:
             if os.path.exists(self.status):
@@ -148,9 +158,8 @@ class CmuScrobbler(object):
                 now - self.status_content['start'] < min(int(round(self.status_content['duration']/2.0)), 240)):
             return
 
-        # TODO: read mbid (MusicBrainz Track ID) from file save filename and read it in the fork
-        # also do this for now_playing
         to_write = u'\t'.join((
+            self.status_content['file'],
             self.status_content['artist'],
             self.status_content['title'],
             str(now),
@@ -186,25 +195,29 @@ class CmuScrobbler(object):
                 fo = file(cachefile,'r')
                 line = fo.readline()
                 while len(line) > 0:
-                    (artist, track, time, source, length, album, trackno) = line.decode('utf-8').split('\t')
+                    (path, artist, track, time, source, length, album, trackno) = line.decode('utf-8').split('\t')
                     trackno = trackno.strip()
+                    mbid = get_mbid(path)
                     scrobbler.submit(artist, track, int(time),
                         source=source,
                         length=length,
                         album=album,
                         trackno=trackno,
+                        mbid=mbid,
                     )
                     line = fo.readline()
                 fo.close()
                 scrobbler.flush()
                 os.remove(cachefile)
             if now_playing is not None and not now_playing['artist'] == u'' and not now_playing['title'] == u'':
+                mbid = get_mbid(now_playing['file'])
                 scrobbler.now_playing(
                     now_playing['artist'],
                     now_playing['title'],
                     album=now_playing['album'],
                     length=int(now_playing['length']),
                     trackno=int(now_playing['trackno']),
+                    mbid=mbid,
                 )
         finally:
             if os.path.exists(self.pidfile):
