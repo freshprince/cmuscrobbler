@@ -217,7 +217,6 @@ def exception_hook(*exc_info):
     fp.write(cgitb.text(exc_info))
     fp.close()
 
-sys.excepthook = exception_hook
 
 def usage():
     print "To use cmuscrobbler.py:"
@@ -226,6 +225,7 @@ def usage():
     print "Don't forget to add your username and password in the script."
 
 if __name__ == "__main__":
+    sys.excepthook = exception_hook
     if len(sys.argv) < 2:
         usage()
         sys.exit()
