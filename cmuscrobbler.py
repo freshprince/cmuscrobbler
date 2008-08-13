@@ -41,6 +41,9 @@ def get_mbid(file):
         return ''
 
 class CmuScrobbler(object):
+
+    CLIENTID = ('cmu','1.0')
+
     def __init__(self):
         self.data = {}
         self.status = None
@@ -189,7 +192,7 @@ class CmuScrobbler(object):
 
     def _real_commit(self, now_playing):
         try:
-            scrobbler.login(username, password)
+            scrobbler.login(username, password, CmuScrobbler.CLIENTID)
             if os.path.exists(cachefile):
                 # TODO: try several times (3?) with delay (exponentional?)
                 fo = file(cachefile,'r')
