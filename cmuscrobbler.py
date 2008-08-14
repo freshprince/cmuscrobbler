@@ -117,28 +117,28 @@ class CmuScrobbler(object):
         fo = open(self.status, "r")
         content = fo.read()
         fo.close()
-        (file, artist, title, album, trackno, start, duration) = content.decode('utf-8').split("\t")
+        (file, artist, title, album, trackno, start, duration) = content.split("\t")
         duration = duration.strip()
         self.status_content = {'file': unquote(file).decode('utf-8'),
                                'artist': unquote(artist).decode('utf-8'),
                                'title': unquote(title).decode('utf-8'),
                                'album': unquote(album).decode('utf-8'),
-                               'trackno': trackno,
+                               'trackno': trackno.decode('utf-8'),
                                'start': int(start),
                                'duration': int(duration)}
 
 
     def write_file(self, start):
-        to_write = u'\t'.join((
+        to_write = '\t'.join((
             quote(self.data['file'].encode('utf-8')),
             quote(self.data['artist'].encode('utf-8')),
             quote(self.data['title'].encode('utf-8')),
             quote(self.data['album'].encode('utf-8')),
-            self.data['tracknumber'],
-            str(start),
-            self.data['duration']))
+            self.data['tracknumber'].encode('utf-8'),
+            str(start).encode('utf-8'),
+            self.data['duration'].encode('utf-8')))
         fo = open(self.status, "w")
-        fo.write(to_write.encode('utf-8'))
+        fo.write(to_write)
         fo.write('\n')
         fo.close()
 
@@ -162,17 +162,17 @@ class CmuScrobbler(object):
                 now - self.status_content['start'] < min(int(round(self.status_content['duration']/2.0)), 240)):
             return
 
-        to_write = u'\t'.join((
+        to_write = '\t'.join((
             quote(self.status_content['file'].encode('utf-8')),
             quote(self.status_content['artist'].encode('utf-8')),
             quote(self.status_content['title'].encode('utf-8')),
-            str(now),
-            u'P',
-            str(self.status_content['duration']),
+            str(now).encode('utf-8'),
+            'P',
+            str(self.status_content['duration']).encode('utf-8'),
             quote(self.status_content['album'].encode('utf-8')),
             self.status_content['trackno']))
         fp = file(cachefile,'a')
-        fp.write(to_write.encode('utf-8'))
+        fp.write(to_write)
         fp.write('\n')
         fp.close()
 
@@ -199,14 +199,14 @@ class CmuScrobbler(object):
                 fo = file(cachefile,'r')
                 line = fo.readline()
                 while len(line) > 0:
-                    (path, artist, track, time, source, length, album, trackno) = line.decode('utf-8').split('\t')
+                    (path, artist, track, time, source, length, album, trackno) = line.split('\t')
                     trackno = trackno.strip()
                     mbid = get_mbid(unquote(path).decode('utf-8'))
                     scrobbler.submit(unquote(artist).decode('utf-8'), unquote(track).decode('utf-8'), int(time),
-                        source=source,
-                        length=length,
+                        source=source.decode('utf-8'),
+                        length=length.decode('utf-8'),
                         album=unquote(album).decode('utf-8'),
-                        trackno=trackno,
+                        trackno=trackno.decode('utf-8'),
                         mbid=mbid,
                     )
                     line = fo.readline()
