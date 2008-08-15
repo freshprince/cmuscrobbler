@@ -33,6 +33,8 @@ cachefile = '/path/to/cachefile'
 # >>> md5('password').hexdigest()
 # '5f4dcc3b5aa765d61d8327deb882cf99'
 
+debug = False
+
 def get_mbid(file):
     try:
         audio = ID3(file)
@@ -228,6 +230,8 @@ class CmuScrobbler(object):
                 os.remove(self.pidfile)
 
 def exception_hook(*exc_info):
+    if not debug:
+        return
     if exc_info == ():
         exc_info = sys.exc_info()
     fp = file('/tmp/cmuscrobbler-%s.error' % os.environ['USER'], 'a')
