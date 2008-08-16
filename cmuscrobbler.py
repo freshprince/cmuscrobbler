@@ -19,6 +19,8 @@ import sys
 import time
 import os
 import cgitb
+import traceback
+import logging
 from datetime import datetime
 from urllib import quote, unquote
 import scrobbler
@@ -34,6 +36,10 @@ cachefile = '/path/to/cachefile'
 # '5f4dcc3b5aa765d61d8327deb882cf99'
 
 debug = False
+
+FORMAT = "%(asctime)-15s %(process)d %(levelname)-5s: %(message)s"
+logging.basicConfig(filename='/tmp/cmuscrobbler.log', level=logging.DEBUG, format=FORMAT)
+logger = logging.getLogger('cmuscrobbler')
 
 def get_mbid(file):
     try:
@@ -59,6 +65,7 @@ class CmuScrobbler(object):
             self.pidfile = '/tmp/cmuscrobbler-%s.pid' % os.environ['USER']
 
     def get_status(self):
+        logger.debug('Main Process initialiated')
         self.read_arguments()
         self.read_file()
 
@@ -72,10 +79,8 @@ class CmuScrobbler(object):
         if self.status_content is not None:
             if self.status_content['file'] == self.data['file']:
                 if self.data['status'] != u'playing' and os.path.exists(self.status):
+                    logger.info('Not playing. Removing statusfile')
                     os.remove(self.status)
-                    self.submit()
-                return
-
             self.submit()
 
         now_playing = None
@@ -94,6 +99,7 @@ class CmuScrobbler(object):
                 os.remove(self.status)
 
         self.commit(now_playing)
+        logger.debug('Main Process finished.')
 
 
     def read_arguments(self):
@@ -111,6 +117,7 @@ class CmuScrobbler(object):
         for field in ['artist', 'title', 'album', 'tracknumber', 'status', 'file']:
             if not self.data.has_key(field):
                 self.data[field] = u''
+        logger.debug('Got Arguments: %s', self.data)
 
 
     def read_file(self):
@@ -128,6 +135,7 @@ class CmuScrobbler(object):
                                'trackno': trackno.decode('utf-8'),
                                'start': int(start),
                                'duration': int(duration)}
+        logger.debug('Got statusinfo: %s', self.status_content)
 
 
     def write_file(self, start):
@@ -143,11 +151,14 @@ class CmuScrobbler(object):
         fo.write(to_write)
         fo.write('\n')
         fo.close()
+        logger.info('Wrote statusfile.')
+        logger.debug('Content: %s', to_write)
 
 
     def submit(self):
         #submits track if it got played long enough
         if self.status_content['artist'] == u'' or self.status_content['title'] == u'':
+            logger.info('Not submitting because artist or title is empty')
             return
 
         now = int(time.mktime(datetime.now().timetuple()))
@@ -162,6 +173,7 @@ class CmuScrobbler(object):
         """
         if (self.status_content['duration'] <= 30 or
                 now - self.status_content['start'] < min(int(round(self.status_content['duration']/2.0)), 240)):
+            logger.info('Not submitting because didn\'t listen to long enough')
             return
 
         to_write = '\t'.join((
@@ -177,11 +189,16 @@ class CmuScrobbler(object):
         fp.write(to_write)
         fp.write('\n')
         fp.close()
+        logger.info('Attached submit to cachefile')
+        logger.debug('Content: %s', to_write)
 
     def commit(self, now_playing=None):
         if os.path.exists(self.pidfile):
             "commit already running maybe waiting for network timeout or something, doing nothing"
+            logger.info('Commit already running. Not commiting')
             return
+
+        logger.debug('Forking')
         if not os.fork():
             os.setsid()
             pid = os.fork()
@@ -189,45 +206,164 @@ class CmuScrobbler(object):
                 fo = file(self.pidfile, 'w')
                 fo.write(str(pid))
                 fo.close()
+                logger.debug('Wrote pidfile')
                 sys.exit(0)
             else:
-                self._real_commit(now_playing)
+                try:
+                    self._real_commit(now_playing)
+                finally:
+                    if os.path.exists(self.pidfile):
+                        os.remove(self.pidfile)
+                        logger.debug('Deleted pidfile')
+
 
     def _real_commit(self, now_playing):
-        try:
+        """this is quite ugly spaghetti code. maybe we could make this a little bit more tidy?"""
+        logger.info('Begin scrobbling')
+        success = False
+        submitted = False
+        tosubmit = set()
+        tosubmitted = set()
+        cache_count = 0
+        retry_sleep = None
+        while not success:
+            if retry_sleep is None:
+                retry_sleep = 60
+            else:
+                logger.info('Sleeping %d minute(s)', retry_sleep / 60)
+                time.sleep(retry_sleep)
+                retry_sleep = min(retry_sleep * 2, 120 * 60)
+            #handshake phase
+            logger.debug('Handshake')
             scrobbler.login(username, password, CmuScrobbler.CLIENTID)
+
+            #now playing phase
+            if now_playing is not None and not now_playing['artist'] == u'' and not now_playing['title'] == u'':
+                logger.info('Sending \'Now playing\'')
+                mbid = get_mbid(now_playing['file'])
+                np_success = False
+                for tries in xrange(1, 4):
+                    np_success = scrobbler.now_playing(
+                        now_playing['artist'],
+                        now_playing['title'],
+                        album=now_playing['album'],
+                        length=int(now_playing['length']),
+                        trackno=int(now_playing['trackno']),
+                        mbid=mbid,
+                    )
+                    if np_success:
+                        logger.info('\'Now playing\' submitted successfully')
+                        retry_sleep = None
+                        now_playing = None
+                        break
+                    logger.error('Sending \'Now playing\' failed. Try %d', tries)
+                if not np_success:
+                    logger.error('Restarting')
+                    continue
+
+            #submit phase
             if os.path.exists(cachefile):
-                # TODO: try several times (3?) with delay (exponentional?)
+                logger.info('Scrobbling songs')
+                (_, _, _, _, _, _, _, _, mtime, _) = os.stat(cachefile)
                 fo = file(cachefile,'r')
                 line = fo.readline()
                 while len(line) > 0:
-                    (path, artist, track, time, source, length, album, trackno) = line.split('\t')
+                    (path, artist, track, playtime, source, length, album, trackno) = line.split('\t')
                     trackno = trackno.strip()
                     mbid = get_mbid(unquote(path).decode('utf-8'))
-                    scrobbler.submit(unquote(artist).decode('utf-8'), unquote(track).decode('utf-8'), int(time),
-                        source=source.decode('utf-8'),
-                        length=length.decode('utf-8'),
-                        album=unquote(album).decode('utf-8'),
-                        trackno=trackno.decode('utf-8'),
-                        mbid=mbid,
-                    )
+                    tosubmit.add((playtime, artist, track, source, length, album, trackno, mbid))
                     line = fo.readline()
                 fo.close()
-                scrobbler.flush()
+                logger.info('Read %d songs from cachefile', len(tosubmit))
+
+                logger.debug('Sorting songlist')
+                submitlist = list(tosubmit)
+                submitlist.sort(key=lambda x: int(x[0]))
+                retry = False
+                for (playtime, artist, track, source, length, album, trackno, mbid) in submitlist:
+                    if (playtime, artist, track, source, length, album, trackno, mbid) in tosubmitted:
+                        logger.debug('Track already submitted or in cache: %s - %s', unquote(artist), unquote(track))
+                        continue
+                    if cache_count >= 3:
+                        logger.info('Flushing. cache_count=%d', cache_count)
+                        if self._flush():
+                            logger.info('Flush successful.')
+                            retry_sleep = None
+                            cache_count = 0
+                        else:
+                            retry = True
+                            break
+                    sb_success = False
+                    for tries in xrange(1, 4):
+                        try:
+                            sb_success = scrobbler.submit(unquote(artist).decode('utf-8'), unquote(track).decode('utf-8'),
+                                int(playtime),
+                                source=source.decode('utf-8'),
+                                length=length.decode('utf-8'),
+                                album=unquote(album).decode('utf-8'),
+                                trackno=trackno.decode('utf-8'),
+                                mbid=mbid,
+                            )
+                        except Exception, e:
+                            logger.error('Submit error: %s', e)
+                            for tbline in traceback.format_exc().splitlines():
+                                logger.debug('%s', tbline)
+                            sb_success = False
+                        if sb_success:
+                            tosubmitted.add((playtime, artist, track, source, length, album, trackno, mbid))
+                            cache_count += 1
+                            logger.info('Submitted. cache_count=%d: %s - %s', cache_count, unquote(artist), unquote(track))
+                            break
+                        logger.error('Submit failed. Try %d', tries)
+                    if not sb_success:
+                       retry = True
+                       break
+                    if cache_count >= 3:
+                        logger.info('Flushing. cache_count=%d', cache_count)
+                        if self._flush():
+                            logger.info('Flush successful.')
+                            retry_sleep = None
+                            cache_count = 0
+                        else:
+                            retry = True
+                            break
+                if retry:
+                    logger.error('Restaring')
+                    continue
+
+                if cache_count > 0:
+                    logger.info('Cache not empty: flushing')
+                    if self._flush():
+                        logger.info('Flush successful.')
+                        retry_sleep = None
+                        cache_count = 0
+                    else:
+                        logger.error('Restarting')
+                        continue
+
+                (_, _, _, _, _, _, _, _, newmtime, _) = os.stat(cachefile)
+                if newmtime != mtime:
+                    logger.info('Cachefile changed since we started. Restarting')
+                    continue
+                logger.info('Scrobbled all Songs, removing cachefile')
                 os.remove(cachefile)
-            if now_playing is not None and not now_playing['artist'] == u'' and not now_playing['title'] == u'':
-                mbid = get_mbid(now_playing['file'])
-                scrobbler.now_playing(
-                    now_playing['artist'],
-                    now_playing['title'],
-                    album=now_playing['album'],
-                    length=int(now_playing['length']),
-                    trackno=int(now_playing['trackno']),
-                    mbid=mbid,
-                )
-        finally:
-            if os.path.exists(self.pidfile):
-                os.remove(self.pidfile)
+            success = True
+        logger.info('Finished scrobbling')
+
+    def _flush(self):
+        sb_success = False
+        for tries in xrange(1, 4):
+            try:
+                sb_success = scrobbler.flush()
+            except Exception, e:
+                logger.error('Flush error: %s', e)
+                for tbline in traceback.format_exc().splitlines():
+                    logger.debug('%s', tbline)
+                sb_success = False
+            if sb_success:
+                break
+            logger.error('Flush failed. try %d', tries)
+        return sb_success
 
 def exception_hook(*exc_info):
     if not debug:
@@ -237,6 +373,9 @@ def exception_hook(*exc_info):
     fp = file('/tmp/cmuscrobbler-%s.error' % os.environ['USER'], 'a')
     fp.write(cgitb.text(exc_info))
     fp.close()
+    logger.critical('ERROR EXIT')
+    for tbline in traceback.format_exc().splitlines():
+        logger.debug('%s', tbline)
 
 
 def usage():
