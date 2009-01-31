@@ -237,30 +237,6 @@ class CmuScrobbler(object):
             logger.debug('Handshake')
             scrobbler.login(username, password, CmuScrobbler.CLIENTID)
 
-            #now playing phase
-            if now_playing is not None and not now_playing['artist'] == u'' and not now_playing['title'] == u'':
-                logger.info('Sending \'Now playing\'')
-                mbid = get_mbid(now_playing['file'])
-                np_success = False
-                for tries in xrange(1, 4):
-                    np_success = scrobbler.now_playing(
-                        now_playing['artist'],
-                        now_playing['title'],
-                        album=now_playing['album'],
-                        length=int(now_playing['length']),
-                        trackno=int(now_playing['trackno']),
-                        mbid=mbid,
-                    )
-                    if np_success:
-                        logger.info('\'Now playing\' submitted successfully')
-                        retry_sleep = None
-                        now_playing = None
-                        break
-                    logger.error('Sending \'Now playing\' failed. Try %d', tries)
-                if not np_success:
-                    logger.error('Restarting')
-                    continue
-
             #submit phase
             if os.path.exists(cachefile):
                 logger.info('Scrobbling songs')
@@ -347,6 +323,31 @@ class CmuScrobbler(object):
                     continue
                 logger.info('Scrobbled all Songs, removing cachefile')
                 os.remove(cachefile)
+
+            #now playing phase
+            if now_playing is not None and not now_playing['artist'] == u'' and not now_playing['title'] == u'':
+                logger.info('Sending \'Now playing\'')
+                mbid = get_mbid(now_playing['file'])
+                np_success = False
+                for tries in xrange(1, 4):
+                    np_success = scrobbler.now_playing(
+                        now_playing['artist'],
+                        now_playing['title'],
+                        album=now_playing['album'],
+                        length=int(now_playing['length']),
+                        trackno=int(now_playing['trackno']),
+                        mbid=mbid,
+                    )
+                    if np_success:
+                        logger.info('\'Now playing\' submitted successfully')
+                        retry_sleep = None
+                        now_playing = None
+                        break
+                    logger.error('Sending \'Now playing\' failed. Try %d', tries)
+                if not np_success:
+                    logger.error('Restarting')
+                    continue
+
             success = True
         logger.info('Finished scrobbling')
 
