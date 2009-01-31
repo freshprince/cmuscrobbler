@@ -1,0 +1,7 @@
+cmuscrobbler TODO
+=================
+
+Right now I only testet cmuscrobbler with a working connection to the
+internet. What would happen if there's no network connection. Will it try
+to connect forever? Try to fix that and then I think we can package that
+thing vor a new release.
