@@ -36,9 +36,9 @@ cachefile = '/path/to/cachefile'
 # '5f4dcc3b5aa765d61d8327deb882cf99'
 
 debug = False
+debuglogfile = '/path/to/logfile'
 
-FORMAT = "%(asctime)-15s %(process)d %(levelname)-5s: %(message)s"
-logging.basicConfig(filename='/tmp/cmuscrobbler.log', level=logging.DEBUG, format=FORMAT)
+# --- end of configuration variables ---
 logger = logging.getLogger('cmuscrobbler')
 
 def get_mbid(file):
@@ -373,14 +373,12 @@ class CmuScrobbler(object):
         return sb_success
 
 def exception_hook(*exc_info):
-    if not debug:
-        return
     if exc_info == ():
         exc_info = sys.exc_info()
-    fp = file('/tmp/cmuscrobbler-%s.error' % os.environ['USER'], 'a')
+    fp = file('%s-error' % logfile, 'a')
     fp.write(cgitb.text(exc_info))
     fp.close()
-    logger.critical('ERROR EXIT')
+    logger.critical('ERROR EXIT -- see %s-error for detailed traceback' % logfile)
     for tbline in traceback.format_exc().splitlines():
         logger.debug('%s', tbline)
 
@@ -392,7 +390,13 @@ def usage():
     print "Don't forget to add your username and password in the script."
 
 if __name__ == "__main__":
-    sys.excepthook = exception_hook
+    if debug:
+        FORMAT = "%(asctime)-15s %(process)d %(levelname)-5s: %(message)s"
+        logging.basicConfig(filename=debuglogfile, level=logging.DEBUG, format=FORMAT)
+        sys.excepthook = exception_hook
+    else:
+        logging.basicConfig(filename='/dev/null')
+
     if len(sys.argv) < 2:
         usage()
         sys.exit()
