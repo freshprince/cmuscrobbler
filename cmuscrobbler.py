@@ -103,7 +103,13 @@ class CmuScrobbler(object):
 
 
     def read_arguments(self):
-        self.data = dict(zip(sys.argv[1::2], map(lambda x: x.decode('utf-8'), sys.argv[2::2])))
+        for k, v in zip(sys.argv[1::2], sys.argv[2::2]):
+            try:
+                self.data[k] = v.decode('utf-8')
+            except UnicodeDecodeError:
+                # if utf-8 fails try with latin1.
+                # FIXME: consider making this configurable
+                self.data[k] = v.decode('latin1')
         # self.data will be a hash like this:
         """
         {'album': u'Basics',
