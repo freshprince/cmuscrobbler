@@ -30,6 +30,9 @@ username = 'your last.fm username'
 password = '5f4dcc3b5aa765d61d8327deb882cf99'
 cachefile = '/path/to/cachefile'
 
+scrobbler_url = 'http://turtle.libre.fm/'
+#scrobbler_url = 'http://post.audioscrobbler.com/'
+
 # set this to False if you don't like to use the 'now playing' function
 do_now_playing = True
 
@@ -251,7 +254,7 @@ class CmuScrobbler(object):
                 retry_sleep = min(retry_sleep * 2, 120 * 60)
             #handshake phase
             logger.debug('Handshake')
-            scrobbler.login(username, password, CmuScrobbler.CLIENTID)
+            scrobbler.login(username, password, hashpw=False, client=CmuScrobbler.CLIENTID, url=scrobbler_url)
 
             #submit phase
             if os.path.exists(cachefile):
@@ -361,8 +364,7 @@ class CmuScrobbler(object):
                         break
                     logger.error('Sending \'Now playing\' failed. Try %d', tries)
                 if not np_success:
-                    logger.error('Restarting')
-                    continue
+                    logger.error('Submitting \'Now playing\' failed. Giving up.')
 
             success = True
         logger.info('Finished scrobbling')
