@@ -30,6 +30,9 @@ username = 'your last.fm username'
 password = '5f4dcc3b5aa765d61d8327deb882cf99'
 cachefile = '/path/to/cachefile'
 
+# set this to False if you don't like to use the 'now playing' function
+do_now_playing = True
+
 # to get yout passwort start python and enter:
 # >>> from hashlib import md5
 # >>> md5('password').hexdigest()
@@ -230,6 +233,9 @@ class CmuScrobbler(object):
     def _real_commit(self, now_playing):
         """this is quite ugly spaghetti code. maybe we could make this a little bit more tidy?"""
         logger.info('Begin scrobbling')
+        if (not do_now_playing):
+            logger.debug('Now playing disabled')
+            now_playing = None
         success = False
         submitted = False
         tosubmit = set()
