@@ -226,6 +226,8 @@ class CmuScrobbler(object):
                     self._real_commit(now_playing)
                 except Exception, e:
                     logger.error('Something failed: %s' % e)
+                    for tbline in traceback.format_exc().splitlines():
+                        logger.debug('%s', tbline)
                     exception_hook(sys.exc_info())
                 finally:
                     if os.path.exists(self.pidfile):
@@ -254,7 +256,13 @@ class CmuScrobbler(object):
                 retry_sleep = min(retry_sleep * 2, 120 * 60)
             #handshake phase
             logger.debug('Handshake')
-            scrobbler.login(username, password, hashpw=False, client=CmuScrobbler.CLIENTID, url=scrobbler_url)
+            try:
+                scrobbler.login(username, password, hashpw=False, client=CmuScrobbler.CLIENTID, url=scrobbler_url)
+            except Exception, e:
+                logger.error('Handshake failed: %s', e)
+                for tbline in traceback.format_exc().splitlines():
+                    logger.debug('%s', tbline)
+                continue
 
             #submit phase
             if os.path.exists(cachefile):
@@ -349,14 +357,20 @@ class CmuScrobbler(object):
                 mbid = get_mbid(now_playing['file'])
                 np_success = False
                 for tries in xrange(1, 4):
-                    np_success = scrobbler.now_playing(
-                        now_playing['artist'],
-                        now_playing['title'],
-                        album=now_playing['album'],
-                        length=int(now_playing['length']),
-                        trackno=int(now_playing['trackno']),
-                        mbid=mbid,
-                    )
+                    try:
+                        np_success = scrobbler.now_playing(
+                            now_playing['artist'],
+                            now_playing['title'],
+                            album=now_playing['album'],
+                            length=int(now_playing['length']),
+                            trackno=int(now_playing['trackno']),
+                            mbid=mbid,
+                        )
+                    except Exception, e:
+                        logger.error('now_playing threw an exception: %s' % e)
+                        for tbline in traceback.format_exc().splitlines():
+                            logger.debug('%s', tbline)
+                        break
                     if np_success:
                         logger.info('\'Now playing\' submitted successfully')
                         retry_sleep = None
