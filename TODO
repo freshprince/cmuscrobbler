@@ -1,9 +1,8 @@
 cmuscrobbler TODO
 =================
 
-Right now I only testet cmuscrobbler with a working connection to the
-internet. What would happen if there's no network connection. Will it try
-to connect forever? Try to fix that and then I think we can package that
-thing for a new release.
+Stuff to be done until next release is possible:
 
-Also make the charset configurable.
+Make the charset configurable.
+
+Wait for my patches to python-scrobbler to be commited.

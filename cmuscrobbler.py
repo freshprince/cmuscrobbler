@@ -247,10 +247,15 @@ class CmuScrobbler(object):
         tosubmitted = set()
         cache_count = 0
         retry_sleep = None
+        retry_count = 0
         while not success:
             if retry_sleep is None:
                 retry_sleep = 60
             else:
+                retry_count = retry_count + 1
+                if retry_count > 7:
+                    logger.info('Giving up.')
+                    break
                 logger.info('Sleeping %d minute(s)', retry_sleep / 60)
                 time.sleep(retry_sleep)
                 retry_sleep = min(retry_sleep * 2, 120 * 60)
