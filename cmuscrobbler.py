@@ -46,7 +46,8 @@ def get_mbid(file):
         audio = ID3(file)
         ufid = audio.get(u'UFID:http://musicbrainz.org')
         return ufid.data if ufid else ''
-    except Exception:
+    except Exception, e:
+        logger.debug('get_mbid failed: %s', e)
         return ''
 
 class CmuScrobbler(object):
@@ -217,6 +218,9 @@ class CmuScrobbler(object):
             else:
                 try:
                     self._real_commit(now_playing)
+                except Exception, e:
+                    logger.error('Something failed: %s' % e)
+                    exception_hook(sys.exc_info())
                 finally:
                     if os.path.exists(self.pidfile):
                         os.remove(self.pidfile)
