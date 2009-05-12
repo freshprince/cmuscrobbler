@@ -47,6 +47,12 @@ debuglogfile = '/path/to/logfile'
 # --- end of configuration variables ---
 logger = logging.getLogger('cmuscrobbler')
 
+def log_traceback(exception):
+    if not debug:
+        return
+    for tbline in traceback.format_exc().splitlines():
+        logger.debug('%s', tbline)
+
 def get_mbid(file):
     try:
         audio = ID3(file)
@@ -224,11 +230,6 @@ class CmuScrobbler(object):
             else:
                 try:
                     self._real_commit(now_playing)
-                except Exception, e:
-                    logger.error('Something failed: %s' % e)
-                    for tbline in traceback.format_exc().splitlines():
-                        logger.debug('%s', tbline)
-                    exception_hook(sys.exc_info())
                 finally:
                     if os.path.exists(self.pidfile):
                         os.remove(self.pidfile)
@@ -265,8 +266,7 @@ class CmuScrobbler(object):
                 scrobbler.login(username, password, hashpw=False, client=CmuScrobbler.CLIENTID, url=scrobbler_url)
             except Exception, e:
                 logger.error('Handshake failed: %s', e)
-                for tbline in traceback.format_exc().splitlines():
-                    logger.debug('%s', tbline)
+                log_traceback(e)
                 continue
 
             #submit phase
@@ -314,8 +314,7 @@ class CmuScrobbler(object):
                             )
                         except Exception, e:
                             logger.error('Submit error: %s', e)
-                            for tbline in traceback.format_exc().splitlines():
-                                logger.debug('%s', tbline)
+                            log_traceback(e)
                             sb_success = False
                         if sb_success:
                             tosubmitted.add((playtime, artist, track, source, length, album, trackno, mbid))
@@ -373,8 +372,7 @@ class CmuScrobbler(object):
                         )
                     except Exception, e:
                         logger.error('now_playing threw an exception: %s' % e)
-                        for tbline in traceback.format_exc().splitlines():
-                            logger.debug('%s', tbline)
+                        log_traceback(e)
                         break
                     if np_success:
                         logger.info('\'Now playing\' submitted successfully')
@@ -395,8 +393,7 @@ class CmuScrobbler(object):
                 sb_success = scrobbler.flush()
             except Exception, e:
                 logger.error('Flush error: %s', e)
-                for tbline in traceback.format_exc().splitlines():
-                    logger.debug('%s', tbline)
+                log_traceback(e)
                 sb_success = False
             if sb_success:
                 break
@@ -406,10 +403,10 @@ class CmuScrobbler(object):
 def exception_hook(*exc_info):
     if exc_info == ():
         exc_info = sys.exc_info()
-    fp = file('%s-error' % logfile, 'a')
+    fp = file('%s-error' % debuglogfile, 'a')
     fp.write(cgitb.text(exc_info))
     fp.close()
-    logger.critical('ERROR EXIT -- see %s-error for detailed traceback' % logfile)
+    logger.critical('ERROR EXIT -- see %s-error for detailed traceback' % debuglogfile)
     for tbline in traceback.format_exc().splitlines():
         logger.debug('%s', tbline)
 
