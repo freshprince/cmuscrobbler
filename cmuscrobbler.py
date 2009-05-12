@@ -30,8 +30,8 @@ username = 'your last.fm username'
 password = '5f4dcc3b5aa765d61d8327deb882cf99'
 cachefile = '/path/to/cachefile'
 
-scrobbler_url = 'http://turtle.libre.fm/'
-#scrobbler_url = 'http://post.audioscrobbler.com/'
+#scrobbler_url = 'http://turtle.libre.fm/'
+scrobbler_url = 'http://post.audioscrobbler.com/'
 
 # set this to False if you don't like to use the 'now playing' function
 do_now_playing = True
