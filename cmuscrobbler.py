@@ -26,12 +26,20 @@ from urllib import quote, unquote
 import scrobbler
 from mutagen.id3 import ID3
 
-username = 'your last.fm username'
-password = '5f4dcc3b5aa765d61d8327deb882cf99'
-cachefile = '/path/to/cachefile'
-
-#scrobbler_url = 'http://turtle.libre.fm/'
-scrobbler_url = 'http://post.audioscrobbler.com/'
+scrobbler_config = [
+    { 'username':      'your last.fm username',
+      'password':      '5f4dcc3b5aa765d61d8327deb882cf99',
+      'cachefile':     '/path/to/last.fm/cachefile',
+      'scrobbler_url': 'http://post.audioscrobbler.com/',
+      'pidfile':       '/path/to/last.fm/pidfile',
+    },
+#    { 'username':      'your libre.fm username',
+#      'password':      '5f4dcc3b5aa765d61d8327deb882cf99',
+#      'cachefile':     '/path/to/libre.fm/cachefile',
+#      'scrobbler_url': 'http://turtle.libre.fm/',
+#      'pidfile':       '/path/to/libre.fm./pidfile',
+#    },
+]
 
 # set this to False if you don't like to use the 'now playing' function
 do_now_playing = True
@@ -70,12 +78,8 @@ class CmuScrobbler(object):
         self.data = {}
         self.status = None
         self.status_content = None
-        self.pidfile = None
-
         if self.status is None:
             self.status = '/tmp/cmuscrobbler-%s.status' % os.environ['USER']
-        if self.pidfile is None:
-            self.pidfile = '/tmp/cmuscrobbler-%s.pid' % os.environ['USER']
 
     def get_status(self):
         logger.debug('Main Process initialiated')
@@ -204,41 +208,54 @@ class CmuScrobbler(object):
             str(self.status_content['duration']).encode('utf-8'),
             quote(self.status_content['album'].encode('utf-8')),
             self.status_content['trackno']))
-        fp = file(cachefile,'a')
-        fp.write(to_write)
-        fp.write('\n')
-        fp.close()
-        logger.info('Attached submit to cachefile')
+        for config in scrobbler_config:
+            cachefile = config.get('cachefile')
+            if cachefile is None:
+                raise Exception('Broken config! Cachefile missing.')
+            fp = file(cachefile,'a')
+            fp.write(to_write)
+            fp.write('\n')
+            fp.close()
+            logger.info('Attached submit to cachefile %s' % cachefile)
         logger.debug('Content: %s', to_write)
 
     def commit(self, now_playing=None):
-        if os.path.exists(self.pidfile):
-            "commit already running maybe waiting for network timeout or something, doing nothing"
-            logger.info('Commit already running. Not commiting')
-            return
+        for config in scrobbler_config:
+            pidfile = config.get('pidfile')
+            password = config.get('password')
+            scrobbler_url = config.get('scrobbler_url')
+            username = config.get('username')
+            cachefile = config.get('cachefile')
+            if ((pidfile is None) or (password is None) or (scrobbler_url is None) or (username is None) or (cachefile is None)):
+                raise Exception('Broken config! Something is missing.')
 
-        logger.debug('Forking')
-        if not os.fork():
-            os.setsid()
-            pid = os.fork()
-            if pid:
-                fo = file(self.pidfile, 'w')
-                fo.write(str(pid))
-                fo.close()
-                logger.debug('Wrote pidfile')
-                sys.exit(0)
-            else:
-                try:
-                    self._real_commit(now_playing)
-                finally:
-                    if os.path.exists(self.pidfile):
-                        os.remove(self.pidfile)
-                        logger.debug('Deleted pidfile')
+            if os.path.exists(pidfile):
+                "commit already running maybe waiting for network timeout or something, doing nothing"
+                logger.info('Commit already running. Not commiting. (%s)' % pidfile)
+                return
+
+            logger.debug('Forking')
+            if not os.fork():
+                os.setsid()
+                pid = os.fork()
+                if pid:
+                    fo = file(pidfile, 'w')
+                    fo.write(str(pid))
+                    fo.close()
+                    logger.debug('Wrote pidfile')
+                    sys.exit(0)
+                else:
+                    try:
+                        self._real_commit(now_playing, cachefile, username, password, scrobbler_url)
+                    finally:
+                        if os.path.exists(pidfile):
+                            os.remove(pidfile)
+                            logger.debug('Deleted pidfile')
 
 
-    def _real_commit(self, now_playing):
+    def _real_commit(self, now_playing, cachefile, username, password, scrobbler_url):
         """this is quite ugly spaghetti code. maybe we could make this a little bit more tidy?"""
-        logger.info('Begin scrobbling')
+        logger.info('Begin scrobbling to %s', scrobbler_url)
         if (not do_now_playing):
             logger.debug('Now playing disabled')
             now_playing = None
@@ -255,7 +272,7 @@ class CmuScrobbler(object):
             else:
                 retry_count = retry_count + 1
                 if retry_count > 7:
-                    logger.info('Giving up.')
+                    logger.info('Giving up scrobbling to %s', scrobbler_url)
                     break
                 logger.info('Sleeping %d minute(s)', retry_sleep / 60)
                 time.sleep(retry_sleep)
@@ -265,13 +282,13 @@ class CmuScrobbler(object):
             try:
                 scrobbler.login(username, password, hashpw=False, client=CmuScrobbler.CLIENTID, url=scrobbler_url)
             except Exception, e:
-                logger.error('Handshake failed: %s', e)
+                logger.error('Handshake with %s failed: %s', scrobbler_url, e)
                 log_traceback(e)
                 continue
 
             #submit phase
             if os.path.exists(cachefile):
-                logger.info('Scrobbling songs')
+                logger.info('Scrobbling songs to %s', scrobbler_url)
                 (_, _, _, _, _, _, _, _, mtime, _) = os.stat(cachefile)
                 fo = file(cachefile,'r')
                 line = fo.readline()
@@ -282,7 +299,7 @@ class CmuScrobbler(object):
                     tosubmit.add((playtime, artist, track, source, length, album, trackno, mbid))
                     line = fo.readline()
                 fo.close()
-                logger.info('Read %d songs from cachefile', len(tosubmit))
+                logger.info('Read %d songs from cachefile %s', len(tosubmit), cachefile)
 
                 logger.debug('Sorting songlist')
                 submitlist = list(tosubmit)
@@ -357,7 +374,7 @@ class CmuScrobbler(object):
 
             #now playing phase
             if now_playing is not None and not now_playing['artist'] == u'' and not now_playing['title'] == u'':
-                logger.info('Sending \'Now playing\'')
+                logger.info('Sending \'Now playing\' to %s', scrobbler_url)
                 mbid = get_mbid(now_playing['file'])
                 np_success = False
                 for tries in xrange(1, 4):
@@ -384,7 +401,7 @@ class CmuScrobbler(object):
                     logger.error('Submitting \'Now playing\' failed. Giving up.')
 
             success = True
-        logger.info('Finished scrobbling')
+        logger.info('Finished scrobbling to %s', scrobbler_url)
 
     def _flush(self):
         sb_success = False

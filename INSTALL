@@ -5,10 +5,15 @@ To install CmuScrobble, copy the python script somewhere convenient (e.g.
 /home/user/.cmus/cmuscrobble.py).
 
 Edit the beginning of the file and add your last.fm username and password and
-set the path to the cachefile (e.g. /home/user/.cmus/cmuscrobble.cache).
+set the path to the cachefile (e.g. /home/user/.cmus/cmuscrobble.last.cache)
+and pidfile.
+
+You can now do multiscrobble. Just add multiple entries to the config. See the
+source for an example.
 
 Make sure you have python-scrobbler installed. You can install it with
 easy_installer by entering `sudo easy_install scrobbler`.
+
 
 ATTENTION! CmuScrobbler now needs a patched version of scrobbler (until my
 patches get accepted upstream). Please install python-scrobbler with
@@ -16,10 +21,10 @@ patches get accepted upstream). Please install python-scrobbler with
 
 
 CmuScrobbler also depends on mutagen to read the MusicBrainz TrackID from the
-ID3-tags. You can install it also with easy_install, type: `sudo easy_install
-mutagen`.
+ID3-tags. You can install it also with easy_install, type:
+`sudo easy_install mutagen`
 
 Afer you have done all this you can set cmus to use cmuscrobbler.py by entering
-`:set status_display_program=/home/user/.cmus/cmuscrobble.py`.
+`:set status_display_program=/home/user/.cmus/cmuscrobble.py`
 
 Then you should be good to go to scrobble your brains out.
