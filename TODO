@@ -6,3 +6,8 @@ Stuff to be done until next release is possible:
 Make the charset configurable.
 
 Wait for my patches to python-scrobbler to be commited.
+
+Right now there's a little error in my implementation. It treats 'pause' like
+'stop' but in the last.fm Submissions Protocol states that pausing should be
+irrelevant. So we might have to store the playtime when paused and add it if
+the same song gets resumed.
