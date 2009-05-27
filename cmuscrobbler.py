@@ -232,7 +232,7 @@ class CmuScrobbler(object):
             if os.path.exists(pidfile):
                 "commit already running maybe waiting for network timeout or something, doing nothing"
                 logger.info('Commit already running. Not commiting. (%s)' % pidfile)
-                return
+                continue
 
             logger.debug('Forking')
             if not os.fork():
