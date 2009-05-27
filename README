@@ -1,9 +1,11 @@
 CmuScrobbler - Scrobble your Songs that you listened to in Cmus
 ===============================================================
 
-CmuScrobbler is a little python script that sends your songs to last.fm
-while you listen to them. It supports "now playing" and also caches the
-scrobbles while you are offline to upload them once you get online again.
+CmuScrobbler is a little python script that sends your songs to last.fm,
+libre.fm or any other GNUkebox server while you listen to them. It supports
+"now playing", multiscrobbling (scrobbling your songs on multiple servers or
+accounts) and also caches the scrobbles while you are offline to upload them
+once you get online again.
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
