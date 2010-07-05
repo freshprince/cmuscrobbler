@@ -379,6 +379,8 @@ class CmuScrobbler(object):
                 np_success = False
                 for tries in xrange(1, 4):
                     try:
+                        if len(now_playing['trackno']) == 0:
+                            now_playing['trackno'] = '0'
                         np_success = scrobbler.now_playing(
                             now_playing['artist'],
                             now_playing['title'],
