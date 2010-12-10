@@ -24,6 +24,7 @@ import logging
 from datetime import datetime
 from urllib import quote, unquote
 import scrobbler
+import mutagen
 from mutagen.id3 import ID3
 
 scrobbler_config = [
@@ -63,9 +64,16 @@ def log_traceback(exception):
 
 def get_mbid(file):
     try:
-        audio = ID3(file)
-        ufid = audio.get(u'UFID:http://musicbrainz.org')
-        return ufid.data if ufid else ''
+        if mutagen.version >= (1,17):
+            f = mutagen.File(file, easy=True)
+            mbid = f.get('musicbrainz_albumid', '')
+            if not isinstance(mbid, basestring):
+                mbid = mbid[0]
+            return str(mbid)
+        else:
+            audio = ID3(file)
+            ufid = audio.get(u'UFID:http://musicbrainz.org')
+            return ufid.data if ufid else ''
     except Exception, e:
         logger.debug('get_mbid failed: %s', e)
         return ''
