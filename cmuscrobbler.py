@@ -320,6 +320,8 @@ class CmuScrobbler(object):
                             break
                     sb_success = False
                     for tries in xrange(1, 4):
+                        logger.debug('Try to submit: %s, %s, playtime=%d, source=%s, length=%s, album=%s, trackno=%s, mbid=%s',
+                            unquote(artist), unquote(track), int(playtime), source, length, unquote(album), trackno, mbid)
                         try:
                             sb_success = scrobbler.submit(unquote(artist).decode('utf-8'), unquote(track).decode('utf-8'),
                                 int(playtime),
