@@ -6,7 +6,8 @@ To install CmuScrobble, copy the python script somewhere convenient (e.g.
 
 Edit the beginning of the file and add your last.fm username and password and
 set the path to the cachefile (e.g. /home/user/.cmus/cmuscrobble.last.cache)
-and pidfile.
+and pidfile. You can also use the config file ~/.cmuscrobbler.conf to make
+it easier to update the script (see CONFIG EXAMPLE below).
 
 You can now do multiscrobble. Just add multiple entries to the config. See the
 source for an example.
@@ -30,3 +31,26 @@ Afer you have done all this you can set cmus to use cmuscrobbler.py by entering
 `:set status_display_program=/home/user/.cmus/cmuscrobble.py`
 
 Then you should be good to go to scrobble your brains out.
+
+
+CONFIG EXAMPLE
+==============
+
+[DEFAULT]
+do_now_playing = true
+debug          = false
+debuglogfile   = /path/to/logfile
+
+[last.fm]
+username      = your last.fm username
+password      = 5f4dcc3b5aa765d61d8327deb882cf99
+cachefile     = /path/to/last.fm/cachefile
+scrobbler_url = http://post.audioscrobbler.com/
+pidfile       = /path/to/last.fm/pidfile
+                 
+#[libre.fm]
+#username      = your libre.fm username
+#password      = 5f4dcc3b5aa765d61d8327deb882cf99
+#cachefile     = /path/to/libre.fm/cachefile
+#scrobbler_url = http://turtle.libre.fm/
+#pidfile       = /path/to/libre.fm./pidfile

@@ -26,6 +26,10 @@ from urllib import quote, unquote
 import scrobbler
 import mutagen
 from mutagen.id3 import ID3
+import ConfigParser
+
+# You can also configure the following variables using ~/.cmuscrobbler.conf,
+# see INSTALL.
 
 scrobbler_config = [
     { 'username':      'your last.fm username',
@@ -439,14 +443,29 @@ def exception_hook(*exc_info):
     for tbline in traceback.format_exc().splitlines():
         logger.debug('%s', tbline)
 
+def read_config():
+    global do_now_playing, debug, debuglogfile
+    cp = ConfigParser.SafeConfigParser({'home': os.getenv('HOME')})
+    cp.read(os.path.expanduser('~/.cmuscrobbler.conf'))
+    if cp.sections():
+        scrobbler_config[:] = [dict(cp.items(n)) for n in cp.sections()]
+    if 'do_now_playing' in cp.defaults():
+        do_now_playing = cp.getboolean('DEFAULT', 'do_now_playing')
+    if 'debug' in cp.defaults():
+        debug = cp.getboolean('DEFAULT', 'debug')
+    if 'debuglogfile' in cp.defaults():
+        debuglogfile = cp.get('DEFAULT', 'debuglogfile')
 
 def usage():
     print "To use cmuscrobbler.py:"
     print "Use it as status_display_program in cmus"
     print "\n type :set status_display_program=/patch/to/cmuscrobbler.py\n"
-    print "Don't forget to add your username and password in the script."
+    print "Don't forget to add your username and password in the script or in"
+    print "~/.cmuscrobbler.conf."
 
 if __name__ == "__main__":
+    read_config()
+
     if debug:
         FORMAT = "%(asctime)-15s %(process)d %(levelname)-5s: %(message)s"
         logging.basicConfig(filename=debuglogfile, level=logging.DEBUG, format=FORMAT)
