@@ -66,7 +66,7 @@ def get_mbid(file):
     try:
         if mutagen.version >= (1,17):
             f = mutagen.File(file, easy=True)
-            mbid = f.get('musicbrainz_albumid', '')
+            mbid = f.get('musicbrainz_trackid', '')
             if not isinstance(mbid, basestring):
                 mbid = mbid[0]
             return str(mbid)
