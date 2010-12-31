@@ -446,6 +446,7 @@ def exception_hook(*exc_info):
 def read_config():
     global do_now_playing, debug, debuglogfile
     cp = ConfigParser.SafeConfigParser({'home': os.getenv('HOME')})
+    cp.read(os.path.expanduser('~/.cmus/cmuscrobbler.conf'))
     cp.read(os.path.expanduser('~/.cmuscrobbler.conf'))
     if cp.sections():
         scrobbler_config[:] = [dict(cp.items(n)) for n in cp.sections()]
@@ -461,7 +462,7 @@ def usage():
     print "Use it as status_display_program in cmus"
     print "\n type :set status_display_program=/patch/to/cmuscrobbler.py\n"
     print "Don't forget to add your username and password in the script or in"
-    print "~/.cmuscrobbler.conf."
+    print "~/.cmuscrobbler.conf or ~/.cmus/cmuscrobbler.conf."
 
 if __name__ == "__main__":
     read_config()

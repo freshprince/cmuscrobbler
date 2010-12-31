@@ -6,8 +6,9 @@ To install CmuScrobble, copy the python script somewhere convenient (e.g.
 
 Edit the beginning of the file and add your last.fm username and password and
 set the path to the cachefile (e.g. /home/user/.cmus/cmuscrobble.last.cache)
-and pidfile. You can also use the config file ~/.cmuscrobbler.conf to make
-it easier to update the script (see CONFIG EXAMPLE below).
+and pidfile. You can also use the config file ~/.cmuscrobbler.conf or
+~/.cmus/cmuscrobbler.conf to make it easier to update the script (see CONFIG
+EXAMPLE below).
 
 You can now do multiscrobble. Just add multiple entries to the config. See the
 source for an example.
