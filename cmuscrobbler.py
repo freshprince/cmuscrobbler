@@ -272,7 +272,6 @@ class CmuScrobbler(object):
             logger.debug('Now playing disabled')
             now_playing = None
         success = False
-        submitted = False
         tosubmit = set()
         tosubmitted = set()
         cache_count = 0
