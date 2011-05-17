@@ -31,7 +31,7 @@ ID3-tags. You can install it also with easy_install, type:
 `sudo easy_install mutagen`
 
 Afer you have done all this you can set cmus to use cmuscrobbler.py by entering
-`:set status_display_program=/home/user/.cmus/cmuscrobble.py`
+`:set status_display_program=/home/user/.cmus/cmuscrobbler.py`
 
 Then you should be good to go to scrobble your brains out.
 
@@ -50,7 +50,7 @@ password      = 5f4dcc3b5aa765d61d8327deb882cf99
 cachefile     = /path/to/last.fm/cachefile
 scrobbler_url = http://post.audioscrobbler.com/
 pidfile       = /path/to/last.fm/pidfile
-                 
+
 #[libre.fm]
 #username      = your libre.fm username
 #password      = 5f4dcc3b5aa765d61d8327deb882cf99
