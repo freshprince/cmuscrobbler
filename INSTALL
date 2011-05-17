@@ -22,6 +22,8 @@ patches get accepted upstream). Please install python-scrobbler with
 `sudo easy_install http://beast.ethz.ch/~david/cmuscrobbler/scrobbler-1.0.0a2_patch-py2.5.egg`
 for python2.6 use
 `sudo easy_install http://beast.ethz.ch/~david/cmuscrobbler/scrobbler-1.0.0a2_patch-py2.6.egg`
+and for python 2.7
+`sudo easy_install http://beast.ethz.ch/~david/cmuscrobbler/scrobbler-1.0.0a2_patch-py2.7.egg`
 
 
 CmuScrobbler also depends on mutagen to read the MusicBrainz TrackID from the
