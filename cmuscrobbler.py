@@ -304,10 +304,13 @@ class CmuScrobbler(object):
                 fo = file(cachefile,'r')
                 line = fo.readline()
                 while len(line) > 0:
-                    (path, artist, track, playtime, source, length, album, trackno) = line.split('\t')
-                    trackno = trackno.strip()
-                    mbid = get_mbid(unquote(path).decode('utf-8'))
-                    tosubmit.add((playtime, artist, track, source, length, album, trackno, mbid))
+                    try:
+                        (path, artist, track, playtime, source, length, album, trackno) = line.split('\t')
+                        trackno = trackno.strip()
+                        mbid = get_mbid(unquote(path).decode('utf-8'))
+                        tosubmit.add((playtime, artist, track, source, length, album, trackno, mbid))
+                    except Exception, e:
+                        logger.debug(e)
                     line = fo.readline()
                 fo.close()
                 logger.info('Read %d songs from cachefile %s', len(tosubmit), cachefile)
