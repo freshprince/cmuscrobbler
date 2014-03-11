@@ -310,7 +310,7 @@ class CmuScrobbler(object):
                         mbid = get_mbid(unquote(path).decode('utf-8'))
                         tosubmit.add((playtime, artist, track, source, length, album, trackno, mbid))
                     except Exception, e:
-                        logger.debug(e)
+                        logger.debug('cache read error: %s', e)
                     line = fo.readline()
                 fo.close()
                 logger.info('Read %d songs from cachefile %s', len(tosubmit), cachefile)
